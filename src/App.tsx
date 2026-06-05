@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 import {
   FaFacebookF,
@@ -42,7 +42,8 @@ type PortfolioData = {
   socials: Social[];
   tabs: Record<TabKey, { title: string; content: React.ReactNode }>;
 };
-function RainFallBackground() {
+
+function StarrySkyBackground() {
   const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -55,6 +56,30 @@ function RainFallBackground() {
     let w = 0;
     let h = 0;
     let raf = 0;
+
+    const rand = (min: number, max: number) =>
+      min + Math.random() * (max - min);
+
+    type Star = {
+      x: number;
+      y: number;
+      r: number;
+      baseAlpha: number;
+      alpha: number;
+      twinkleSpeed: number;
+      phase: number;
+    };
+
+    type Dust = {
+      x: number;
+      y: number;
+      r: number;
+      alpha: number;
+      speed: number;
+    };
+
+    const stars: Star[] = [];
+    const dust: Dust[] = [];
 
     const resize = () => {
       const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
@@ -71,209 +96,175 @@ function RainFallBackground() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
-    const rand = (min: number, max: number) =>
-      min + Math.random() * (max - min);
+    const initStars = () => {
+      stars.length = 0;
+      dust.length = 0;
 
-    type RainDrop = {
-      x: number;
-      y: number;
-      length: number;
-      speed: number;
-      opacity: number;
-      thickness: number;
-      wind: number;
-    };
+      const starCount = Math.floor((w * h) / 2200);
+      const dustCount = Math.floor((w * h) / 9000);
 
-    type Splash = {
-      x: number;
-      y: number;
-      r: number;
-      life: number;
-      maxLife: number;
-    };
+      for (let i = 0; i < starCount; i++) {
+        const yBias = Math.pow(Math.random(), 1.6);
 
-    const rainDrops: RainDrop[] = [];
-    const splashes: Splash[] = [];
+        stars.push({
+          x: rand(0, w),
+          y: yBias * h * 0.85,
+          r: Math.random() > 0.94 ? rand(1.3, 2.2) : rand(0.35, 1.15),
+          baseAlpha: rand(0.35, 0.95),
+          alpha: rand(0.35, 0.95),
+          twinkleSpeed: rand(0.012, 0.035),
+          phase: rand(0, Math.PI * 2),
+        });
+      }
 
-    const initRain = () => {
-      rainDrops.length = 0;
-
-      const count = Math.floor((w * h) / 6500);
-
-      for (let i = 0; i < count; i++) {
-        rainDrops.push({
-          x: rand(-w * 0.2, w * 1.2),
-          y: rand(-h, h),
-          length: rand(18, 42),
-          speed: rand(8, 16),
-          opacity: rand(0.22, 0.58),
-          thickness: rand(0.7, 1.5),
-          wind: rand(-1.8, -0.6),
+      for (let i = 0; i < dustCount; i++) {
+        dust.push({
+          x: rand(0, w),
+          y: rand(0, h * 0.75),
+          r: rand(0.4, 1.2),
+          alpha: rand(0.05, 0.16),
+          speed: rand(0.03, 0.12),
         });
       }
     };
 
-    const createSplash = (x: number, y: number) => {
-      if (splashes.length > 35) return;
-
-      splashes.push({
-        x,
-        y,
-        r: rand(2, 6),
-        life: 0,
-        maxLife: rand(14, 26),
-      });
-    };
-
     const drawBackground = () => {
       /**
-       * Color reference from your image:
-       * top    = deep navy night sky
-       * middle = ocean blue
-       * bottom = darker beach/water tone
+       * Starry-sky color reference:
+       * top    = almost black navy
+       * middle = deep blue
+       * bottom = ocean horizon blue
        */
-      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
 
-      sky.addColorStop(0, "#04101f");
-      sky.addColorStop(0.35, "#06294a");
-      sky.addColorStop(0.65, "#07436b");
-      sky.addColorStop(1, "#020914");
+      bg.addColorStop(0, "#020817");
+      bg.addColorStop(0.32, "#041a36");
+      bg.addColorStop(0.68, "#063c68");
+      bg.addColorStop(1, "#020817");
 
-      ctx.fillStyle = sky;
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
       /**
-       * Soft ocean-like horizon glow
+       * Soft horizon glow like the image
        */
-      const horizon = ctx.createLinearGradient(0, h * 0.42, 0, h * 0.75);
-      horizon.addColorStop(0, "rgba(37, 129, 190, 0.18)");
-      horizon.addColorStop(0.5, "rgba(20, 92, 150, 0.14)");
-      horizon.addColorStop(1, "rgba(0, 0, 0, 0)");
+      const horizon = ctx.createLinearGradient(0, h * 0.55, 0, h);
+      horizon.addColorStop(0, "rgba(32, 132, 205, 0)");
+      horizon.addColorStop(0.45, "rgba(43, 145, 215, 0.22)");
+      horizon.addColorStop(1, "rgba(0, 6, 18, 0.35)");
 
       ctx.fillStyle = horizon;
-      ctx.fillRect(0, h * 0.38, w, h * 0.4);
+      ctx.fillRect(0, h * 0.5, w, h * 0.5);
+    };
 
-      /**
-       * Small star/noise particles like the reference image
-       */
-      ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
-      for (let i = 0; i < 90; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h * 0.42;
-        const size = Math.random() > 0.92 ? 1.6 : 0.8;
+    const drawMilkyWay = () => {
+      ctx.save();
 
-        ctx.fillRect(x, y, size, size);
+      ctx.translate(w * 0.46, h * 0.2);
+      ctx.rotate(-0.22);
+
+      const cloud = ctx.createRadialGradient(
+        0,
+        0,
+        20,
+        0,
+        0,
+        Math.max(w, h) * 0.42
+      );
+
+      cloud.addColorStop(0, "rgba(140, 205, 255, 0.18)");
+      cloud.addColorStop(0.25, "rgba(70, 150, 220, 0.11)");
+      cloud.addColorStop(0.55, "rgba(35, 90, 160, 0.06)");
+      cloud.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      ctx.scale(1.9, 0.34);
+      ctx.fillStyle = cloud;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(w, h) * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    const drawStars = (time: number) => {
+      for (const star of stars) {
+        star.alpha =
+          star.baseAlpha +
+          Math.sin(time * star.twinkleSpeed + star.phase) * 0.25;
+
+        const opacity = Math.max(0.15, Math.min(1, star.alpha));
+
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(225, 245, 255, ${opacity})`;
+        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (star.r > 1.4) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(225, 245, 255, ${opacity * 0.28})`;
+          ctx.lineWidth = 0.8;
+
+          ctx.moveTo(star.x - star.r * 3, star.y);
+          ctx.lineTo(star.x + star.r * 3, star.y);
+
+          ctx.moveTo(star.x, star.y - star.r * 3);
+          ctx.lineTo(star.x, star.y + star.r * 3);
+
+          ctx.stroke();
+        }
       }
+    };
 
-      /**
-       * Dark vignette
-       */
+    const drawDust = () => {
+      for (const p of dust) {
+        p.x += p.speed;
+
+        if (p.x > w + 10) {
+          p.x = -10;
+          p.y = rand(0, h * 0.75);
+        }
+
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(160, 215, 255, ${p.alpha})`;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    const drawVignette = () => {
       const vignette = ctx.createRadialGradient(
         w * 0.5,
-        h * 0.35,
-        80,
+        h * 0.38,
+        120,
         w * 0.5,
-        h * 0.35,
+        h * 0.38,
         Math.max(w, h)
       );
 
-      vignette.addColorStop(0, "rgba(255,255,255,0.03)");
-      vignette.addColorStop(1, "rgba(0,0,0,0.5)");
+      vignette.addColorStop(0, "rgba(255,255,255,0.02)");
+      vignette.addColorStop(1, "rgba(0,0,0,0.56)");
 
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, w, h);
     };
 
-    const drawRain = () => {
-      ctx.lineCap = "round";
-
-      for (const drop of rainDrops) {
-        ctx.beginPath();
-
-        ctx.strokeStyle = `rgba(190, 225, 255, ${drop.opacity})`;
-        ctx.lineWidth = drop.thickness;
-
-        ctx.moveTo(drop.x, drop.y);
-        ctx.lineTo(drop.x + drop.wind * 5, drop.y + drop.length);
-
-        ctx.stroke();
-
-        drop.x += drop.wind;
-        drop.y += drop.speed;
-
-        if (drop.y > h + drop.length) {
-          createSplash(drop.x, h - rand(20, 90));
-
-          drop.x = rand(-w * 0.2, w * 1.2);
-          drop.y = rand(-160, -20);
-          drop.length = rand(18, 42);
-          drop.speed = rand(8, 16);
-          drop.opacity = rand(0.22, 0.58);
-          drop.thickness = rand(0.7, 1.5);
-          drop.wind = rand(-1.8, -0.6);
-        }
-
-        if (drop.x < -100) {
-          drop.x = w + rand(20, 120);
-        }
-      }
-    };
-
-    const drawSplashes = () => {
-      for (let i = splashes.length - 1; i >= 0; i--) {
-        const splash = splashes[i];
-
-        splash.life += 1;
-
-        const progress = splash.life / splash.maxLife;
-        const opacity = 1 - progress;
-
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(180, 225, 255, ${0.32 * opacity})`;
-        ctx.lineWidth = 1;
-
-        ctx.arc(
-          splash.x,
-          splash.y,
-          splash.r + progress * 12,
-          0,
-          Math.PI * 2
-        );
-
-        ctx.stroke();
-
-        if (splash.life >= splash.maxLife) {
-          splashes.splice(i, 1);
-        }
-      }
-    };
-
-    const drawMist = () => {
-      const mist = ctx.createLinearGradient(0, h * 0.62, 0, h);
-      mist.addColorStop(0, "rgba(120, 190, 255, 0)");
-      mist.addColorStop(0.5, "rgba(120, 190, 255, 0.06)");
-      mist.addColorStop(1, "rgba(255, 255, 255, 0.05)");
-
-      ctx.fillStyle = mist;
-      ctx.fillRect(0, h * 0.55, w, h * 0.45);
-    };
-
-    const draw = () => {
+    const draw = (time: number) => {
       drawBackground();
-      drawMist();
-      drawRain();
-      drawSplashes();
+      drawMilkyWay();
+      drawDust();
+      drawStars(time);
+      drawVignette();
 
       raf = requestAnimationFrame(draw);
     };
 
     resize();
-    initRain();
-    draw();
+    initStars();
+    draw(0);
 
     const onResize = () => {
       resize();
-      initRain();
+      initStars();
     };
 
     window.addEventListener("resize", onResize);
@@ -379,16 +370,16 @@ function PortfolioHome() {
     { key: "achievements", label: "Achievements" },
     { key: "education", label: "Education" },
   ];
-  
+
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   const [contactPopup, setContactPopup] = useState<
     null | "phone" | "email" | "logo"
   >(null);
 
   return (
-    
+
     <div className="page">
-      <RainFallBackground />
+      <StarrySkyBackground />
       <header className="topBar">
         <button
           className="logoBtn"
@@ -415,7 +406,7 @@ function PortfolioHome() {
           Download Resume
         </a>
       </header>
-      
+
       <main className="layout">
         <section className="hero">
           <div className="avatarRow">
@@ -452,7 +443,7 @@ function PortfolioHome() {
 
         <section className="emptySpace" aria-hidden="true" />
       </main>
-      
+
       <aside className="socialRail">
         {data.socials.map((s) => (
           <a
@@ -468,7 +459,7 @@ function PortfolioHome() {
           </a>
         ))}
       </aside>
-      
+
       <Modal
         open={activeTab !== null}
         title={activeTab ? data.tabs[activeTab].title : ""}
