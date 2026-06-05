@@ -10,13 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^latest",
-    "vite": "^latest",
-    "react": "^latest",
-    "react-dom": "^latest",
-    "react-router-dom": "^latest",
-    "react-icons": "^latest",
-    "typescript": "^latest"
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "react-icons": "latest",
+    "typescript": "latest"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
